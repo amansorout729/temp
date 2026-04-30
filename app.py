@@ -1,40 +1,63 @@
-#app.py
-from flask import Flask, render_template, request
-import os
+from flask import Flask, render_template, request, jsonify
+from langchain.agents import initialize_agent, AgentType, Tool
+from langchain.memory import ConversationBufferMemory
+from langchain.llms import Ollama
+from langchain.tools import DuckDuckGoSearchRun
+import numexpr as ne
 
-from langchain.chat_models import init_chat_model
-from langchain_core.prompts import ChatPromptTemplate
-
+# Initialize Flask app
 app = Flask(__name__)
 
-# Set your API key
-os.environ["OPENROUTER_API_KEY"] = "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"
+# ------------------ TOOLS ------------------ #
+tools = [
+    Tool(
+        name="Calculator",
+        func=lambda x: str(ne.evaluate(x)),
+        description="Evaluates math expressions like '2+2' or '10*5'"
+    ),
+    Tool(
+        name="Search",
+        func=DuckDuckGoSearchRun().run,
+        description="Search the web for current information"
+    ),
+]
 
-# Initialize model
-model = init_chat_model(
-    "auto",
-    model_provider="openrouter",
-    temperature=0.2
+# ------------------ LLM ------------------ #
+llm = Ollama(model="mistral")
+
+# ------------------ MEMORY ------------------ #
+memory = ConversationBufferMemory(
+    memory_key="chat_history",
+    return_messages=True
 )
 
-@app.route("/", methods=["GET", "POST"])
+# ------------------ AGENT ------------------ #
+agent = initialize_agent(
+    tools=tools,
+    llm=llm,
+    agent=AgentType.CONVERSATIONAL_REACT_DESCRIPTION,
+    memory=memory,
+    verbose=True
+)
+
+# ------------------ ROUTES ------------------ #
+
+@app.route("/")
 def home():
-    response = ""
+    return render_template("index.html")
 
-    if request.method == "POST":
-        role = request.form.get("role")
-        topic = request.form.get("topic")
 
-        prompt = ChatPromptTemplate.from_template(
-            "You are a {role}. Explain the concept of {topic} in one paragraph."
-        )
+@app.route("/ask", methods=["POST"])
+def ask():
+    user_input = request.json.get("query")
 
-        messages = prompt.format_prompt(role=role, topic=topic).to_messages()
-        result = model.invoke(messages)
+    try:
+        response = agent.run(user_input)
+        return jsonify({"response": response})
+    except Exception as e:
+        return jsonify({"error": str(e)})
 
-        response = result.content
 
-    return render_template("index.html", response=response)
-
+# ------------------ RUN ------------------ #
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5000, debug=True)
