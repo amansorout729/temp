@@ -1,74 +1,32 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>AI Explainer</title>
-    <style>
-        body {
-            font-family: Arial;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            text-align: center;
-            padding: 50px;
-        }
-
-        .container {
-            background: white;
-            color: black;
-            padding: 30px;
-            border-radius: 10px;
-            width: 400px;
-            margin: auto;
-            box-shadow: 0px 0px 15px rgba(0,0,0,0.2);
-        }
-
-        input {
-            width: 90%;
-            padding: 10px;
-            margin: 10px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-        }
-
-        button {
-            padding: 10px 20px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background: #5a67d8;
-        }
-
-        .output {
-            margin-top: 20px;
-            padding: 15px;
-            background: #f1f1f1;
-            border-radius: 5px;
-        }
-    </style>
+    <title>LangChain Agent</title>
 </head>
 <body>
+    <h2>LangChain AI Agent</h2>
 
-    <div class="container">
-        <h2>🤖 AI Concept Explainer</h2>
+    <input type="text" id="query" placeholder="Ask something..." />
+    <button onclick="sendQuery()">Ask</button>
 
-        <form method="POST">
-            <input type="text" name="role" placeholder="Enter role (e.g. witty scientist)" required>
-            <input type="text" name="topic" placeholder="Enter topic (e.g. Quantum Entanglement)" required>
-            <br>
-            <button type="submit">Generate</button>
-        </form>
+    <p id="response"></p>
 
-        {% if response %}
-        <div class="output">
-            <strong>Answer:</strong><br>
-            {{ response }}
-        </div>
-        {% endif %}
-    </div>
+    <script>
+        async function sendQuery() {
+            const query = document.getElementById("query").value;
 
+            const res = await fetch("/ask", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ query })
+            });
+
+            const data = await res.json();
+            document.getElementById("response").innerText =
+                data.response || data.error;
+        }
+    </script>
 </body>
 </html>
